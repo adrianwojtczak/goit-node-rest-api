@@ -1,13 +1,15 @@
-const fs = require("fs/promises");
-const path = require("path");
+import { readFile, writeFile } from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+import { v4 as uuidv4 } from "uuid";
 
-const { v4: uuidv4 } = require("uuid");
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const contactsPath = path.join(__dirname, "contacts.json");
 
 const listContacts = async () => {
   try {
-    const data = await fs.readFile(contactsPath);
+    const data = await readFile(contactsPath);
     const contacts = JSON.parse(data);
 
     return contacts;
@@ -36,7 +38,7 @@ const removeContact = async (contactId) => {
 
     contacts.splice(contactIndex, 1);
 
-    await fs.writeFile(contactsPath, JSON.stringify(contacts, null, 2));
+    await writeFile(contactsPath, JSON.stringify(contacts, null, 2));
 
     return;
   } catch (err) {
@@ -57,7 +59,7 @@ const addContact = async (body) => {
 
     contacts.push(newContact);
 
-    await fs.writeFile(contactsPath, JSON.stringify(contacts, null, 2));
+    await writeFile(contactsPath, JSON.stringify(contacts, null, 2));
 
     return newContact;
   } catch (err) {
@@ -75,7 +77,7 @@ const updateContact = async (contactId, body) => {
       ...contacts[contactIndex],
       ...body,
     };
-    await fs.writeFile(contactsPath, JSON.stringify(contacts, null, 2));
+    await writeFile(contactsPath, JSON.stringify(contacts, null, 2));
 
     return contacts[contactIndex];
   } catch (err) {
@@ -83,7 +85,7 @@ const updateContact = async (contactId, body) => {
   }
 };
 
-module.exports = {
+export {
   listContacts,
   getContactById,
   removeContact,
