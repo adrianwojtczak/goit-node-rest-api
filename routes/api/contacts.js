@@ -1,4 +1,5 @@
 import express from 'express';
+import auth from '../../middleware/auth.js';
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ import {
 	updateContactStatus,
 } from '../../models/contacts.js';
 
-router.get('/', async (req, res, next) => {
+router.get('/', auth, async (req, res, next) => {
 	try {
 		const contacts = await listContacts();
 		res.status(200).json({
@@ -28,7 +29,7 @@ router.get('/', async (req, res, next) => {
 	}
 });
 
-router.get('/:contactId', async (req, res, next) => {
+router.get('/:contactId', auth, async (req, res, next) => {
 	const { contactId } = req.params;
 
 	try {
@@ -56,7 +57,7 @@ router.get('/:contactId', async (req, res, next) => {
 	}
 });
 
-router.post('/', async (req, res, next) => {
+router.post('/', auth, async (req, res, next) => {
 	const { name, email, phone } = req.body;
 	try {
 		const addedContact = await addContact({ name, email, phone });
@@ -75,7 +76,7 @@ router.post('/', async (req, res, next) => {
 	}
 });
 
-router.delete('/:contactId', async (req, res, next) => {
+router.delete('/:contactId', auth, async (req, res, next) => {
 	const { contactId } = req.params;
 	const contact = await getContactById(contactId);
 
@@ -104,7 +105,7 @@ router.delete('/:contactId', async (req, res, next) => {
 	}
 });
 
-router.put('/:contactId', async (req, res, next) => {
+router.put('/:contactId', auth, async (req, res, next) => {
 	const { contactId } = req.params;
 	const updatedContact = req.body;
 	const contact = await getContactById(contactId);
@@ -133,7 +134,7 @@ router.put('/:contactId', async (req, res, next) => {
 	}
 });
 
-router.patch('/:contactId/favorite', async (req, res, next) => {
+router.patch('/:contactId/favorite', auth, async (req, res, next) => {
 	const { contactId } = req.params;
 	const { favorite } = req.body;
 
