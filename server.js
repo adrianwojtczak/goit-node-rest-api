@@ -2,6 +2,7 @@ import app from './app.js';
 import mongoose from 'mongoose';
 
 import 'dotenv/config';
+import './config/config-passport.js';
 
 const PORT = process.env.PORT || 3000;
 const uriDb = process.env.DB_HOST;
