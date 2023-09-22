@@ -19,8 +19,20 @@ const jwt_secret = process.env.JWT_SECRET;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const AVATARS_FOLDER = path.join(__dirname, '../../public/avatars');
+const TMP_FOLDER = path.join(__dirname, '../../tmp');
 
 const router = express.Router();
+
+const ensureFoldersExist = async () => {
+	try {
+		await fs.mkdir(AVATARS_FOLDER, { recursive: true });
+		await fs.mkdir(TMP_FOLDER, { recursive: true });
+	} catch (error) {
+		console.error('Error creating folders:', error);
+	}
+};
+
+ensureFoldersExist();
 
 const addUserSchema = Joi.object({
 	password: Joi.string()
