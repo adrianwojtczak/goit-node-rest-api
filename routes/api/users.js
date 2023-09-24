@@ -13,6 +13,8 @@ import 'dotenv/config';
 
 import auth from '../../middleware/auth.js';
 import User from '../../models/schemas/user.js';
+import sendVerificationEmail from '../../middleware/sendVerificationEmail.js';
+import generateVerificationToken from '../../middleware/verificationToken.js';
 
 const jwt_secret = process.env.JWT_SECRET;
 
@@ -27,8 +29,8 @@ const ensureFoldersExist = async () => {
 	try {
 		await fs.mkdir(AVATARS_FOLDER, { recursive: true });
 		await fs.mkdir(TMP_FOLDER, { recursive: true });
-	} catch (error) {
-		console.error('Error creating folders:', error);
+	} catch (err) {
+		console.error('Error creating folders:', err);
 	}
 };
 
@@ -101,7 +103,13 @@ router.post('/signup', async (req, res, next) => {
 		const avatar = gravatar.url(email, { s: '250', d: 'retro' });
 		newUser.avatarURL = avatar;
 
+		const verificationToken = generateVerificationToken();
+		newUser.verificationToken = verificationToken;
+
 		await newUser.save();
+
+		await sendVerificationEmail({ email, verificationToken: newUser.verificationToken });
+
 		res.status(201).json({
 			status: 'success',
 			code: 201,
@@ -113,7 +121,89 @@ router.post('/signup', async (req, res, next) => {
 			},
 		});
 	} catch (err) {
-		next(err);
+		console.error(err);
+		res.status(500).json({
+			status: 'error',
+			code: 500,
+			message: 'Internal Server Error',
+			data: 'Registration Failure',
+		});
+	}
+});
+
+router.post('/verify', async (req, res) => {
+	try {
+		const { email } = req.body;
+		const user = await User.findOne({ email });
+
+		if (!user) {
+			return res.status(404).json({
+				status: 'error',
+				code: 404,
+				message: 'User not found',
+				data: 'Not Found',
+			});
+		}
+
+		if (user.verify) {
+			return res.status(400).json({
+				status: 'error',
+				code: 400,
+				message: 'Verification has already been passed',
+				data: 'Bad Request',
+			});
+		}
+
+		await sendVerificationEmail({ email, verificationToken: user.verificationToken });
+
+		res.status(200).json({
+			status: 'success',
+			code: 200,
+			message: 'Verification email sent',
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({
+			status: 'error',
+			code: 500,
+			message: 'Internal Server Error',
+			data: 'Email Sending Failure',
+		});
+	}
+});
+
+router.get('/verify/:verificationToken', async (req, res) => {
+	try {
+		const { verificationToken } = req.params;
+		const user = await User.findOne({ verificationToken });
+
+		if (!user) {
+			return res.status(404).json({
+				status: 'error',
+				code: 404,
+				message: 'User not found',
+				data: 'Not Found',
+			});
+		}
+
+		await User.findByIdAndUpdate(user._id, {
+			verificationToken: '',
+			verify: true,
+		});
+
+		res.status(200).json({
+			status: 'success',
+			code: 200,
+			message: 'Verification successful',
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({
+			status: 'error',
+			code: 500,
+			message: 'Internal Server Error',
+			data: 'Verification process failed',
+		});
 	}
 });
 
@@ -160,7 +250,8 @@ router.post('/login', async (req, res, next) => {
 
 		user.token = token;
 		await user.save();
-	} catch {
+	} catch (err) {
+		console.error(err);
 		return res.status(400).json({
 			status: 'Bad request',
 			code: 400,
@@ -208,6 +299,11 @@ router.get('/current', auth, (req, res) => {
 		}
 	} catch (err) {
 		console.error(err);
+		return res.status(400).json({
+			status: 'Bad request',
+			code: 400,
+			message: 'Get User Failed',
+		});
 	}
 });
 
@@ -219,7 +315,7 @@ router.get('/logout', auth, async (req, res, next) => {
 		await user.save();
 
 		return res.status(204).send();
-	} catch (error) {
+	} catch (err) {
 		return res.status(401).json({
 			status: 'Unauthorized',
 			code: 401,
@@ -231,7 +327,12 @@ router.get('/logout', auth, async (req, res, next) => {
 router.patch('/avatars', auth, upload.single('avatar'), async (req, res) => {
 	try {
 		if (!req.file) {
-			return res.status(400).json({ message: 'No avatar uploaded' });
+			return res.status(400).json({
+				status: 'error',
+				code: 400,
+				message: 'No avatar uploaded',
+				data: 'Bad Request',
+			});
 		}
 
 		const avatarPath = path.join('tmp', req.file.filename);
@@ -243,16 +344,31 @@ router.patch('/avatars', auth, upload.single('avatar'), async (req, res) => {
 		await fs.rename(avatarPath, newAvatarPath);
 
 		const user = await User.findById(req.user._id);
+
 		if (!user) {
-			return res.status(404).json({ message: 'User not found' });
+			return res.status(404).json({
+				status: 'error',
+				code: 404,
+				message: 'User not found',
+				data: 'Not Found',
+			});
 		}
 		user.avatarURL = `/avatars/${newAvatarFileName}`;
 		await user.save();
 
-		res.status(200).json({ avatarURL: user.avatarURL });
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ message: 'Server error' });
+		res.status(200).json({
+			status: 'success',
+			code: 200,
+			avatarURL: user.avatarURL,
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({
+			status: 'error',
+			code: 500,
+			message: 'Internal Server Error',
+			data: 'Avatar update failed',
+		});
 	}
 });
 
