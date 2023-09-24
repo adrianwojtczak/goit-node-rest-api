@@ -2,6 +2,9 @@ import express from 'express';
 import logger from 'morgan';
 import cors from 'cors';
 import passport from 'passport';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
 import './config/config-passport.js';
 
@@ -16,6 +19,8 @@ app.use(logger(formatsLogger));
 app.use(cors());
 app.use(express.json());
 app.use(passport.initialize());
+
+app.use(express.static('public'));
 
 app.use('/api/contacts', contactsRouter);
 app.use('/users', usersRouter);
